@@ -1,0 +1,32 @@
+---
+import Layout from '../layouts/Page.astro';
+import { GITHUB_URL, LINKEDIN_URL } from '../consts';
+---
+
+<Layout title="About" description="Brian Amadio: software engineer in Melbourne, formerly Cecil Earth, Myst AI and Stitch Fix.">
+	<p>
+		I'm a software engineer based in Melbourne with 9+ years building data platforms, forecasting
+		systems and experimentation infrastructure.
+	</p>
+	<ul>
+		<li>
+			<strong>Cecil Earth</strong> (2023–2026): one of three founding engineers. Designed the
+			event-driven AWS platform serving 30+ geospatial datasets and the Cecil Python SDK.
+		</li>
+		<li>
+			<strong>Myst AI</strong> (2021–2022): renewable-energy forecasting platform architecture.
+		</li>
+		<li>
+			<strong>Stitch Fix</strong> (2018–2021): experimentation platform at ~1,000 req/s and 15 ms
+			p99; author of <a href="https://github.com/stitchfix/mab">mab</a>; O'Reilly AI Superstream
+			speaker (2021).
+		</li>
+		<li>
+			PhD in experimental particle physics, UC Berkeley (ATLAS at the LHC). Shared the 2025
+			Breakthrough Prize in Fundamental Physics with the ATLAS collaboration.
+		</li>
+	</ul>
+	<p>
+		<a href={GITHUB_URL}>GitHub</a> · <a href={LINKEDIN_URL}>LinkedIn</a>
+	</p>
+</Layout>

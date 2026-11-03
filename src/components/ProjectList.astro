@@ -1,0 +1,16 @@
+---
+import { getCollection } from 'astro:content';
+
+const projects = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
+---
+
+<ul class="rows">
+	{projects.map((p) => (
+		<li>
+			<a class="row-title" href={`/projects/${p.id}/`}>{p.data.title}</a>
+			{p.data.status === 'in-progress' && <span class="chip">In progress</span>}
+			<p class="row-summary">{p.data.summary}</p>
+			{p.data.tags.length > 0 && <p class="meta">{p.data.tags.join(' · ')}</p>}
+		</li>
+	))}
+</ul>

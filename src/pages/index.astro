@@ -1,0 +1,21 @@
+---
+import PostList from '../components/PostList.astro';
+import ProjectList from '../components/ProjectList.astro';
+import Layout from '../layouts/Page.astro';
+import { GITHUB_URL, LINKEDIN_URL, SITE_DESCRIPTION } from '../consts';
+---
+
+<Layout title="Brian Amadio" description={SITE_DESCRIPTION}>
+	<p class="lede">
+		Senior software engineer and founding engineer: data platforms, experimentation, and production AI
+		agents. Based in Melbourne, looking for staff-level roles.
+	</p>
+	<p class="links">
+		<a href={GITHUB_URL}>GitHub</a>
+		<a href={LINKEDIN_URL}>LinkedIn</a>
+	</p>
+	<p class="eyebrow">Projects</p>
+	<ProjectList />
+	<p class="eyebrow">Writing</p>
+	<PostList limit={3} />
+</Layout>
