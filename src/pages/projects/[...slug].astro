@@ -14,7 +14,7 @@ const { Content } = await render(project);
 const { repo, demo } = project.data;
 ---
 
-<Layout title={project.data.title} description={project.data.summary}>
+<Layout title={project.data.title} description={project.data.summary} image={project.id === 'energy-transition' ? { src: '/og/energy-transition.png' } : undefined}>
 	<p>
 		{repo && <a href={repo}>Repo</a>}
 		{repo && demo && ' · '}

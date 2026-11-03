@@ -9,7 +9,7 @@ import { SITE_TITLE } from '../consts';
 interface Props {
 	title: string;
 	description: string;
-	image?: ImageMetadata;
+	image?: Pick<ImageMetadata, 'src'>;
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
