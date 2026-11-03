@@ -3,8 +3,8 @@
 Astro static site (Cloudflare Pages). Content is Markdown; avoid touching components.
 
 - New blog post: add `src/content/blog/<slug>.md` (title, description, pubDate).
-- New project: add `src/content/projects/<slug>.md` (see schema in `src/content.config.ts`). Each project page needs: problem, architecture diagram, demo or replayable trace, eval numbers, tradeoffs/failures, repo + blog links.
-- Every public demo: server-side keys, per-IP rate limit, hard spend cap, replayed runs by default.
+- New project: add `src/content/projects/<slug>.md` (see schema in `src/content.config.ts`). Each project page needs: problem, data sources, method, a chart or interactive demo, results, limitations, repo + blog links.
+- Any public demo that calls a paid API: server-side keys, per-IP rate limit, hard spend cap, replayed runs by default.
 - Check: `npm run build` must pass.
 
 ## Agent skills
