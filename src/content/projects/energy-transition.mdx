@@ -10,21 +10,17 @@ import EnergyCharts from '../../components/EnergyCharts.astro';
 
 <EnergyCharts part="hero" />
 
-## What it is made of
-
-Share of NEM generation by type, 12-month average.
+## Energy mix
 
 <EnergyCharts part="mix" />
 
 ## Renewables against coal
 
-On a 12-month basis renewables have not passed coal. In single months they have, in every spring and summer month from September 2025 to January 2026 and again in September 2026.
-
 <EnergyCharts part="vs" />
 
-## Cross-check
+## Cross-check against AEMO
 
-Quarterly renewable share against AEMO's own Quarterly Energy Dynamics reports:
+Quarterly renewable share vs AEMO's Quarterly Energy Dynamics:
 
 | Quarter | This page | AEMO |
 | --- | --- | --- |
@@ -36,17 +32,12 @@ Quarterly renewable share against AEMO's own Quarterly Energy Dynamics reports:
 
 ## Limitations
 
-- Mine is always 1 to 1.5 points lower than AEMO's. Small non-scheduled generation is not counted here, which I think explains the gap but have not confirmed.
-- AEMO's half-hour record on 6 Nov 2024 was 75.6%; mine is 73.8%, probably for the same reason.
-- Rooftop solar is an estimate. I use only the `MEASUREMENT` series, because summing it with the satellite series overcounts two to three times. I have not checked AEMO's documentation on which series is preferred.
-- AEMO's data has gaps, for example 5 Sep 2024, when 34 of about 470 units were missing for one half hour. Records skip intervals with under 90% of the usual unit count.
-- "Gas and other" is gas, small other fuels and the under 1% of generation, by energy, from units I could not map to a fuel.
+- Mine runs 1 to 1.5 points below AEMO, probably because small non-scheduled generation is not counted. Not confirmed.
+- Rooftop solar is an AEMO estimate. I use only its `MEASUREMENT` series; I have not checked which series AEMO prefers.
+- "Gas and other" includes the under 1% of generation from units I could not map to a fuel.
+
 ## Data sources
 
-All from AEMO's public NEMweb archive, July 2018 to now, for the five mainland NEM regions:
+AEMO's NEMweb, July 2018 to now, five mainland NEM regions: unit-level output (SCADA), AEMO's rooftop solar estimate, and the generator registration list for fuel types.
 
-- Unit-level output (SCADA) for every scheduled and semi-scheduled generator: wind, utility solar, hydro, coal, gas.
-- AEMO's rooftop solar estimate (`ROOFTOP_PV_ACTUAL`, the `MEASUREMENT` series).
-- AEMO's generator registration list, to map each unit to a fuel. A small override file covers units missing from it.
-
-Renewables are utility wind, utility solar, rooftop solar and conventional hydro; pumped storage and batteries are excluded. Share is renewables divided by scheduled and semi-scheduled generation plus rooftop, from the 30-minute data. Charts show the 12-month rolling average.
+Renewables are wind, utility and rooftop solar, and conventional hydro. Pumped storage and batteries are excluded. Share is renewables divided by scheduled and semi-scheduled generation plus rooftop.

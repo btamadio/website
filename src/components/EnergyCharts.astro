@@ -6,6 +6,9 @@ const pct = (v: number, d = 0) => (v * 100).toFixed(d) + '%';
 const rec = record.time;
 const recWhen = `${rec.getUTCDate()} ${monthLabel(rec.toISOString().slice(0, 7)).replace(/ \d{4}$/, '')} ${rec.getUTCFullYear()} at ${rec.toISOString().slice(11, 16)}`;
 
+// Every 12th window back from the latest, so the sparkline ends on today's figure.
+const yearly = (_: unknown, i: number) => (rolling.length - 1 - i) % 12 === 0;
+
 // Server-rendered sparkline path for the hero tiles.
 function spark(vals: number[], w = 200, h = 34) {
 	const lo = Math.min(...vals), hi = Math.max(...vals);
@@ -15,9 +18,9 @@ function spark(vals: number[], w = 200, h = 34) {
 	return { d, w, h, cx: X(vals.length - 1), cy: Y(vals[vals.length - 1]) };
 }
 const tiles = [
-	{ lab: 'Coal, last 12 months', val: pct(last12.coal), delta: `down from ${pct(rolling[0].coal)} in the year to Jun 2019`, s: spark(rolling.filter((_, i) => i % 12 === 11).map((r) => r.coal)) },
+	{ lab: 'Coal, last 12 months', val: pct(last12.coal), delta: `down from ${pct(rolling[0].coal)} in the year to Jun 2019`, s: spark(rolling.filter(yearly).map((r) => r.coal)) },
 	{ lab: 'Renewable record, 30-minute share', val: pct(record.share, 1), delta: `set ${recWhen}; previous ${pct(record.previous, 1)}`, s: spark(recordByYear.map((r) => r.share)) },
-	{ lab: 'Renewable output, last 12 months', val: `${Math.round(last12.renTwh)} TWh`, delta: `of ${Math.round(last12.totalTwh)} TWh in total`, s: spark(rolling.filter((_, i) => i % 12 === 11).map((r) => r.renTwh)) },
+	{ lab: 'Renewable output, last 12 months', val: `${Math.round(last12.renTwh)} TWh`, delta: `of ${Math.round(last12.totalTwh)} TWh in total`, s: spark(rolling.filter(yearly).map((r) => r.renTwh)) },
 ];
 
 ---
@@ -50,7 +53,7 @@ const tiles = [
 	<div class="energy">
 		<div class="keys">
 			{(part === 'mix'
-				? [['Wind', '#2a78d6'], ['Rooftop solar', '#eb6834'], ['Hydro', '#1baf7a'], ['Utility solar', '#eda100']]
+				? [['Wind', '#2a78d6'], ['Rooftop solar', '#eb6834'], ['Hydro', '#1baf7a'], ['Utility solar', '#eda100'], ['Gas and other', '#c3c2b7'], ['Coal', '#52514e']]
 				: [['Renewables', '#0b6b5c'], ['Coal', '#52514e']]
 			).map(([n, c]) => <span><i class={part === 'mix' ? 'sw' : ''} style={`background:${c}`} />{n}</span>)}
 		</div>
@@ -59,13 +62,13 @@ const tiles = [
 			<summary>View as table</summary>
 			<table>
 				<thead>
-					<tr><th>12 months to</th>{part === 'mix' ? <><th>Wind</th><th>Rooftop</th><th>Hydro</th><th>Utility solar</th><th>Total</th></> : <><th>Renewables</th><th>Coal</th></>}</tr>
+					<tr><th>12 months to</th>{part === 'mix' ? <><th>Wind</th><th>Rooftop</th><th>Hydro</th><th>Utility solar</th><th>Gas and other</th><th>Coal</th></> : <><th>Renewables</th><th>Coal</th></>}</tr>
 				</thead>
 				<tbody>
 					{rolling.filter((r) => r.month.endsWith('-12') || r === rolling[rolling.length - 1]).map((r) => (
 						<tr>
-							<td>{monthLabel(r.month)}</td>
-							{part === 'mix' ? <><td>{pct(r.wind, 1)}</td><td>{pct(r.roof, 1)}</td><td>{pct(r.hydro, 1)}</td><td>{pct(r.usol, 1)}</td><td>{pct(r.ren, 1)}</td></> : <><td>{pct(r.ren, 1)}</td><td>{pct(r.coal, 1)}</td></>}
+							<td>{r.label}</td>
+							{part === 'mix' ? <><td>{pct(r.wind, 1)}</td><td>{pct(r.roof, 1)}</td><td>{pct(r.hydro, 1)}</td><td>{pct(r.usol, 1)}</td><td>{pct(r.gas, 1)}</td><td>{pct(r.coal, 1)}</td></> : <><td>{pct(r.ren, 1)}</td><td>{pct(r.coal, 1)}</td></>}
 						</tr>
 					))}
 				</tbody>
@@ -118,7 +121,6 @@ const tiles = [
 		parent?.appendChild(n);
 		return n;
 	};
-	const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 	const pct = (v: number, d = 0) => (v * 100).toFixed(d) + '%';
 	const tip = document.getElementById('tip')!;
 	function showTip(e: PointerEvent, title: string, rows: { color?: string; value: string; name: string }[]) {
@@ -139,26 +141,23 @@ const tiles = [
 		tip.style.left = x + 'px'; tip.style.top = y + 'px';
 	}
 
-	type Pt = { month: string; wind: number; roof: number; hydro: number; usol: number; ren: number; coal: number };
-	const label = (m: string) => `${MON[+m.slice(5) - 1]} ${m.slice(0, 4)}`;
-	// Fractional year for month "YYYY-MM" (month start).
-	const fx = (m: string) => +m.slice(0, 4) + (+m.slice(5) - 1) / 12;
-
+	type Pt = { label: string; x: number; wind: number; roof: number; hydro: number; usol: number; ren: number; coal: number };
+	
 	function draw(host: HTMLElement) {
 		const part = host.dataset.part!, pts: Pt[] = JSON.parse(host.dataset.points!);
 		const mix = part === 'mix';
 		const series: { name: string; color: string; vals: number[] }[] = mix
-			? [['Wind', 'wind', '#2a78d6'], ['Rooftop solar', 'roof', '#eb6834'], ['Hydro', 'hydro', '#1baf7a'], ['Utility solar', 'usol', '#eda100']].map(([name, k, color]) => ({ name, color, vals: pts.map((p: any) => p[k]) }))
+			? [['Wind', 'wind', '#2a78d6'], ['Rooftop solar', 'roof', '#eb6834'], ['Hydro', 'hydro', '#1baf7a'], ['Utility solar', 'usol', '#eda100'], ['Gas and other', 'gas', '#c3c2b7'], ['Coal', 'coal', '#52514e']].map(([name, k, color]) => ({ name, color, vals: pts.map((p: any) => p[k]) }))
 			: [['Renewables', 'ren', '#0b6b5c'], ['Coal', 'coal', '#52514e']].map(([name, k, color]) => ({ name, color, vals: pts.map((p: any) => p[k]) }));
-		const yMax = mix ? 0.5 : 0.8, yTicks = mix ? [0, 0.1, 0.2, 0.3, 0.4, 0.5] : [0, 0.2, 0.4, 0.6, 0.8];
+		const yMax = mix ? 1 : 0.8, yTicks = mix ? [0, 0.2, 0.4, 0.6, 0.8, 1] : [0, 0.2, 0.4, 0.6, 0.8];
 		host.replaceChildren();
 		const W = Math.max(280, host.clientWidth), H = mix ? 320 : 300, narrow = W < 560;
 		const m = { l: 40, r: narrow ? 14 : 110, t: 14, b: 28 };
-		const svg = el('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': mix ? 'Stacked area chart of renewable share of NEM generation by type' : 'Line chart of renewables share against coal share of NEM generation' }, host);
+		const svg = el('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': mix ? 'Stacked area chart of NEM generation by type' : 'Line chart of renewables share against coal share of NEM generation' }, host);
 		const x0 = m.l, x1 = W - m.r, y0 = H - m.b, y1 = m.t;
-		const xs = pts.map((p) => fx(p.month)), xmin = xs[0], xmax = xs[xs.length - 1];
+		const xs = pts.map((p) => p.x), xmin = xs[0], xmax = xs[xs.length - 1];
 		const X = (v: number) => x0 + ((v - xmin) / (xmax - xmin)) * (x1 - x0), Y = (v: number) => y0 - (v / yMax) * (y0 - y1);
-		const text = (x: number, y: number, s: string, a: Record<string, any>) => { const t = el('text', { x, y, ...a }, svg); t.textContent = s; };
+		const text = (x: number, y: number, s: string, a: Record<string, any>) => { const t = el('text', { x, y, ...a }, svg); t.textContent = s; return t; };
 		yTicks.forEach((v) => {
 			if (v > 0) el('line', { x1: x0, x2: x1, y1: Y(v), y2: Y(v), stroke: '#e1e0d9' }, svg);
 			text(x0 - 8, Y(v) + 4, Math.round(v * 100) + '%', { 'text-anchor': 'end', 'font-size': 11, fill: '#898781' });
@@ -184,12 +183,23 @@ const tiles = [
 				el('circle', { cx: X(xs[n - 1]), cy: Y(b.hi[n - 1]), r: 4, fill: b.s.color, stroke: '#fff', 'stroke-width': 2 }, svg);
 			}
 		});
-		if (!narrow) bands.forEach((b) => {
-			const mid = Y(mix ? (b.lo[n - 1] + b.hi[n - 1]) / 2 : b.hi[n - 1]);
+		if (!narrow && mix) {
+			// Thin bands (gas and other, hydro) would overlap, so labels are one line each and pushed down to keep 15px apart.
+			let floor = -Infinity;
+			bands.slice().reverse().forEach((b) => {
+				const y = Math.max(Y((b.lo[n - 1] + b.hi[n - 1]) / 2) + 4, floor);
+				floor = y + 15;
+				const t = text(X(xs[n - 1]) + 10, y, b.s.name + ' ', { 'font-size': 12, fill: '#52514e' });
+				const v = el('tspan', { 'font-weight': 650, fill: '#14171c' }, t);
+				v.textContent = pct(b.s.vals[n - 1], 1);
+			});
+		}
+		if (!narrow && !mix) bands.forEach((b) => {
+			const mid = Y(b.hi[n - 1]);
 			// Line chart: the upper line's label sits above its end point, the lower one's below, so they never overlap.
-			const dy = mix ? 0 : b.hi[n - 1] === Math.max(...bands.map((x) => x.hi[n - 1])) ? -19 : 15;
+			const dy = b.hi[n - 1] === Math.max(...bands.map((x) => x.hi[n - 1])) ? -19 : 15;
 			text(X(xs[n - 1]) + 10, mid + dy - 1, b.s.name, { 'font-size': 12, fill: '#52514e' });
-			text(X(xs[n - 1]) + 10, mid + dy + 13, pct(b.s.vals[n - 1], mix ? 1 : 0), { 'font-size': 12, 'font-weight': 650, fill: '#14171c' });
+			text(X(xs[n - 1]) + 10, mid + dy + 13, pct(b.s.vals[n - 1], 0), { 'font-size': 12, 'font-weight': 650, fill: '#14171c' });
 		});
 		const g = el('g', { visibility: 'hidden' }, svg), vl = el('line', { y1, y2: y0, stroke: '#898781' }, g);
 		const hit = el('rect', { x: x0, y: y1, width: x1 - x0, height: y0 - y1, fill: 'transparent', style: 'cursor:crosshair' }, svg);
@@ -199,7 +209,7 @@ const tiles = [
 			g.setAttribute('visibility', 'visible'); vl.setAttribute('x1', String(X(xs[i]))); vl.setAttribute('x2', String(X(xs[i])));
 			const rows = series.map((s) => ({ color: s.color, value: pct(s.vals[i], 1), name: s.name })).sort((a, b) => parseFloat(b.value) - parseFloat(a.value));
 			if (mix) rows.push({ value: pct(pts[i].ren, 1), name: 'Total renewables' } as any);
-			showTip(e, `${label(pts[i].month)} (12-month average)`, rows);
+			showTip(e, `${pts[i].label} (12-month average)`, rows);
 		});
 		hit.addEventListener('pointerleave', () => { g.setAttribute('visibility', 'hidden'); tip.hidden = true; });
 	}
