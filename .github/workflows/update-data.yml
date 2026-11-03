@@ -1,0 +1,36 @@
+name: Update energy data
+
+on:
+  schedule:
+    - cron: '0 16 * * *' # 02:00 AEST: the NEM day has ended and NEMweb has published it
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: btamadio/energy-transition
+          path: pipeline
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch new days
+        run: |
+          csv=src/data/energy-transition-daily.csv
+          old=$(wc -l < $csv)
+          pip install -e pipeline
+          cd pipeline && transition-backfill --out ../$csv && cd ..
+          test "$(wc -l < $csv)" -ge "$old" || { echo "CSV shrank"; exit 1; }
+          git diff --quiet $csv || {
+            git config user.name github-actions
+            git config user.email github-actions@users.noreply.github.com
+            git commit -m "Update energy data to $(tail -1 $csv | cut -d, -f1)" $csv
+            git push
+          }
