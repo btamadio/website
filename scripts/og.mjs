@@ -16,7 +16,7 @@ const line = (k, c) => {
 const p = (v) => Math.round(v * 100);
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" font-family="Helvetica, Arial, sans-serif">
 <rect width="${W}" height="${H}" fill="#fff"/>
-<text x="70" y="90" font-size="22" letter-spacing="2" fill="#8b93a1">AUSTRALIA'S ENERGY TRANSITION · NEM · 12 MONTHS TO ${last12.to.toUpperCase()}</text>
+<text x="70" y="90" font-size="22" letter-spacing="2" fill="#8b93a1">ENERGY TRANSITION · NATIONAL ELECTRICITY MARKET · 12 MONTHS TO ${last12.to.toUpperCase()}</text>
 <text x="64" y="330" font-size="210" font-weight="700" letter-spacing="-8" fill="#14171c">${p(last12.ren)}%</text>
 <text x="70" y="405" font-size="34" fill="#52514e">of electricity came from renewables,</text>
 <text x="70" y="450" font-size="34" fill="#52514e">up from ${p(last12.first)}% in 2018-19.</text>
