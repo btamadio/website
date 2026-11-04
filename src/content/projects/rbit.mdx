@@ -7,25 +7,27 @@ tags: [reinforcement learning, python, energy]
 ---
 import RbitCharts from '../../components/RbitCharts.astro';
 
-A deep reinforcement-learning agent trades a simulated battery on Australia's electricity market. How much of the profit available with hindsight can it capture while seeing only what was known at the time? Forward test: 1 September to 6 October 2026, five regions. It has since stopped.
+**Simulated battery:** 200 MW / 400 MWh, 90% round-trip efficiency, $10/MWh degradation cost. Price taker, energy market only.
+
+A deep reinforcement-learning agent charges and discharges it every five minutes on Australia's electricity market, seeing only data published beforehand. Forward test: 1 September to 6 October 2026, five regions. It has since stopped.
 
 <RbitCharts part="charts" />
 
-The price axis is clipped at the 99th percentile; hover values are unclipped. Times are NEM time (AEST).
+The price axis is clipped at the 99th percentile. Times are NEM time (AEST).
 
 ## Results
 
 <RbitCharts part="summary" />
 
-The agent captured 33% (TAS1) to 64% (QLD1) of perfect-foresight profit, cycling about once a day. Net profit is arbitrage revenue minus degradation; perfect foresight is the most the same battery could earn knowing every price in advance.
+The agent captured 33% (TAS1) to 64% (QLD1) of perfect-foresight profit, cycling about once a day. Perfect foresight is the most the same battery could earn knowing every price in advance.
 
 ## Method
 
-Every five minutes the agent picks charge, hold or discharge at full power (dueling double DQN, noisy-network exploration). It sees only data published before that interval: price, demand and interconnector lags, AEMO's 5- and 30-minute forecasts, and its state of charge. The battery has 90% round-trip efficiency and a $10/MWh degradation cost; it is a price taker in the energy market only. The benchmark is a linear program over the whole period. Data: AEMO's NEMweb.
+Dueling double DQN with noisy-network exploration. Each interval it picks charge, hold or discharge at full power, from price, demand and interconnector lags, AEMO's 5- and 30-minute forecasts, and its state of charge. The benchmark is a linear program over the whole period. Data: AEMO's NEMweb.
 
 ## Limitations
 
 - 36 days in one season; other conditions could look quite different.
-- The benchmark must end with an empty battery, which inflates "% of perfect" slightly. I did not measure by how much.
-- Flat degradation cost, no network charges, no frequency-control revenue, no price impact. Simulated dispatch, not a real battery.
-- The daily job has stopped, so these numbers are a fixed snapshot.
+- The benchmark must end with an empty battery, which inflates "% of perfect" slightly (not measured).
+- Flat degradation cost, no network charges, no frequency-control revenue, no price impact. Simulated, not a real battery.
+- The daily job has stopped; these numbers are a fixed snapshot.
