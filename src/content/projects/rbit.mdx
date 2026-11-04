@@ -1,43 +1,31 @@
 ---
-title: Battery arbitrage on Australia's electricity market
-summary: A reinforcement-learning agent that charges and discharges a simulated 200 MW / 400 MWh battery every five minutes, scored against a perfect-foresight benchmark.
+title: Deep reinforcement learning for battery arbitrage
+summary: A deep Q-network agent trading a simulated 200 MW / 400 MWh battery on Australia's electricity market, scored against a perfect-foresight benchmark.
 status: shipped
 order: 2
 tags: [reinforcement learning, python, energy]
 ---
 import RbitCharts from '../../components/RbitCharts.astro';
 
-A grid battery makes money by charging when wholesale electricity is cheap and discharging when it is expensive. In Australia's National Electricity Market (NEM) the price is set every five minutes and swings from negative to thousands of dollars per MWh, so the question is how much of the available profit a model can capture when it only sees what was known at the time.
-
-I trained a deep Q-network agent to make that decision for a simulated battery, then ran it forward every day from 1 September 2026 on new market data, in all five mainland regions. The forward test ran until 6 October 2026 and then stopped. This page is the final result.
-
-## Results
-
-36 days, 1 September to 6 October 2026. Net profit is arbitrage revenue minus degradation cost. "Perfect foresight" is the most the same battery could have earned if it had known every price in advance.
-
-<RbitCharts part="summary" />
-
-The agent captured between a third and two thirds of the perfect-foresight profit, depending on the region: 64% in QLD1 and 33% in TAS1. It cycled the battery about once a day (31 to 47 cycles in 36 days). Pick a region to see where the gap opens up.
+A deep reinforcement-learning agent trades a simulated battery on Australia's electricity market. How much of the profit available with hindsight can it capture while seeing only what was known at the time? Forward test: 1 September to 6 October 2026, five regions. It has since stopped.
 
 <RbitCharts part="charts" />
 
-The price panel clips its axis at the 99th percentile so that a handful of price spikes do not flatten the rest; the hover values are unclipped. Times are NEM time (AEST, no daylight saving).
+The price axis is clipped at the 99th percentile; hover values are unclipped. Times are NEM time (AEST).
+
+## Results
+
+<RbitCharts part="summary" />
+
+The agent captured 33% (TAS1) to 64% (QLD1) of perfect-foresight profit, cycling about once a day. Net profit is arbitrage revenue minus degradation; perfect foresight is the most the same battery could earn knowing every price in advance.
 
 ## Method
 
-- **Battery:** 200 MW / 400 MWh, 90% round-trip efficiency, $10/MWh degradation cost on every MWh charged or discharged. Price taker, energy market only.
-- **Agent:** a dueling double DQN with noisy-network exploration. Every five minutes it chooses charge, hold or discharge at full power, with an action mask that rules out physically impossible moves.
-- **Inputs:** lagged prices, demand and interconnector flows, plus AEMO's own 5-minute (P5) and 30-minute pre-dispatch forecasts, and the battery's state of charge. Each decision uses only reports published before the interval it applies to.
-- **Benchmark:** a linear program over the whole period with the same battery and perfect knowledge of actual prices.
-
-## Data sources
-
-AEMO's NEMweb: dispatch prices, demand and interconnector flows; P5 and pre-dispatch forecast reports. A daily GitHub Actions job ingested new reports, computed features, ran the agent and stored the results.
+Every five minutes the agent picks charge, hold or discharge at full power (dueling double DQN, noisy-network exploration). It sees only data published before that interval: price, demand and interconnector lags, AEMO's 5- and 30-minute forecasts, and its state of charge. The battery has 90% round-trip efficiency and a $10/MWh degradation cost; it is a price taker in the energy market only. The benchmark is a linear program over the whole period. Data: AEMO's NEMweb.
 
 ## Limitations
 
-- **Short test:** 36 days in one season. Results in other conditions could look quite different, and I have not tested that.
-- **The benchmark is slightly handicapped:** the linear program must end the period with an empty battery, while the agent can hold charge. This inflates "% of perfect" a little; I did not measure by how much.
-- **Simplified economics:** flat degradation cost, no network charges, no frequency-control (FCAS) revenue, and no effect of the battery's own bids on prices.
-- **Not a trading result:** these are simulated dispatches priced at the published regional price, not a battery that was actually operated.
-- **No longer running:** the daily job and the dashboard it fed have been retired; the numbers above are a fixed snapshot.
+- 36 days in one season; other conditions could look quite different.
+- The benchmark must end with an empty battery, which inflates "% of perfect" slightly. I did not measure by how much.
+- Flat degradation cost, no network charges, no frequency-control revenue, no price impact. Simulated dispatch, not a real battery.
+- The daily job has stopped, so these numbers are a fixed snapshot.
