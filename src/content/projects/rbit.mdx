@@ -9,7 +9,7 @@ import RbitCharts from '../../components/RbitCharts.astro';
 
 **Simulated battery:** 200 MW / 400 MWh, 90% round-trip efficiency, $10/MWh degradation cost. Price taker, energy market only.
 
-A deep reinforcement-learning agent charges and discharges it every five minutes on Australia's electricity market, seeing only data published beforehand. Forward test: 1 September to 6 October 2026, five regions.
+**Agent:** dueling double DQN with noisy-network exploration and an n-step replay buffer.
 
 <RbitCharts part="charts" />
 
@@ -23,7 +23,7 @@ The agent captured 33% (TAS1) to 64% (QLD1) of perfect-foresight profit, cycling
 
 ## Method
 
-Dueling double DQN with noisy-network exploration. Each interval it picks charge, hold or discharge at full power, from price, demand and interconnector lags, AEMO's 5- and 30-minute forecasts, and its state of charge. The benchmark is a linear program over the whole period. Data: AEMO's NEMweb.
+Each interval the agent picks charge, hold or discharge at full power, from price, demand and interconnector lags, AEMO's 5- and 30-minute forecasts, and its state of charge. The benchmark is a linear program over the whole period. Data: AEMO's NEMweb.
 
 ## Limitations
 
