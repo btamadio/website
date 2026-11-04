@@ -1,0 +1,153 @@
+---
+import { byRegion, defaultRegion, regions } from '../lib/rbit';
+
+const { part } = Astro.props as { part: 'summary' | 'charts' };
+const money = (v: number) => '$' + Math.round(v).toLocaleString('en-US');
+// Compact rows per region: [hour (ms/3.6e6), price, state of charge, cumulative net profit, cumulative perfect-foresight profit].
+const data = Object.fromEntries(
+	regions.map((id) => [id, byRegion[id].hourly.map((h) => [h.t / 36e5, +h.price.toFixed(1), +h.soc.toFixed(2), Math.round(h.profit), Math.round(h.perfect)])]),
+);
+---
+
+{part === 'summary' && (
+	<div class="rbit">
+		<table>
+			<thead>
+				<tr><th>Region</th><th>Net profit</th><th>Perfect foresight</th><th>% of perfect</th><th>Cycles</th></tr>
+			</thead>
+			<tbody>
+				{regions.map((id) => {
+					const s = byRegion[id].summary;
+					return <tr><td>{id}</td><td>{money(s.net)}</td><td>{money(s.perfect)}</td><td>{(s.pct * 100).toFixed(0)}%</td><td>{s.cycles.toFixed(1)}</td></tr>;
+				})}
+			</tbody>
+		</table>
+	</div>
+)}
+
+{part === 'charts' && (
+	<div class="rbit">
+		<label class="pick">Region <select id="rbit-region">{regions.map((id) => <option value={id} selected={id === defaultRegion}>{id}</option>)}</select></label>
+		<div class="keys">
+			<span><i style="background:#0b6b5c" />Agent</span>
+			<span><i style="background:#898781" />Perfect foresight</span>
+			<span><i style="background:#2a78d6" />Price</span>
+			<span><i style="background:#eda100" />State of charge</span>
+		</div>
+		<div class="chart" id="rbit-chart" data-points={JSON.stringify(data)}></div>
+		<div id="rbit-tip" hidden></div>
+	</div>
+)}
+
+<style is:global>
+	.rbit { margin: 1.5rem 0 2rem; }
+	.rbit table { width: 100%; }
+	.rbit td:not(:first-child), .rbit th:not(:first-child) { text-align: right; }
+	.rbit .pick { font-size: 0.9rem; color: #52514e; }
+	.rbit select { font: inherit; margin-left: 0.4rem; }
+	.rbit .keys { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.85rem; color: #52514e; margin: 0.6rem 0 0.4rem; }
+	.rbit .keys span { display: inline-flex; align-items: center; gap: 0.4rem; }
+	.rbit .keys i { width: 16px; height: 2px; display: inline-block; }
+	.rbit .chart { width: 100%; position: relative; }
+	.rbit .chart svg { display: block; overflow: visible; }
+	.rbit .chart text { font-family: var(--sans); }
+	#rbit-tip { position: fixed; z-index: 20; pointer-events: none; background: #fff; border: 1px solid var(--rule); border-radius: 6px; box-shadow: 0 2px 10px rgba(20, 23, 28, 0.1); padding: 0.5rem 0.65rem; font-size: 0.8rem; line-height: 1.45; min-width: 9rem; }
+	#rbit-tip .tt { color: var(--muted); font: 0.72rem/1.4 var(--mono); margin-bottom: 0.2rem; }
+	#rbit-tip .tr { display: flex; align-items: center; gap: 0.5rem; }
+	#rbit-tip .tr i { width: 12px; height: 2px; display: inline-block; flex: none; }
+	#rbit-tip .tr b { font-variant-numeric: tabular-nums; }
+</style>
+
+<script>
+	const NS = 'http://www.w3.org/2000/svg';
+	const el = (tag: string, attrs: Record<string, any>, parent?: Element) => {
+		const n = document.createElementNS(NS, tag);
+		for (const k in attrs) n.setAttribute(k, String(attrs[k]));
+		parent?.appendChild(n);
+		return n;
+	};
+	const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	const dayOf = (h: number) => { const d = new Date(h * 36e5); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
+	const when = (h: number) => `${dayOf(h)} ${String(new Date(h * 36e5).getUTCHours()).padStart(2, '0')}:00`;
+	const money = (v: number) => (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US');
+
+	const host = document.getElementById('rbit-chart');
+	const sel = document.getElementById('rbit-region') as HTMLSelectElement | null;
+	const tip = document.getElementById('rbit-tip')!;
+	type Row = [number, number, number, number, number];
+	const all: Record<string, Row[]> = host ? JSON.parse(host.dataset.points!) : {};
+
+	function draw() {
+		if (!host || !sel) return;
+		const pts = all[sel.value], n = pts.length;
+		host.replaceChildren();
+		const W = Math.max(280, host.clientWidth), narrow = W < 560;
+		const m = { l: narrow ? 52 : 60, r: 12, t: 24, gap: 40, b: 24 };
+		// Three panels share one time axis: cumulative net profit, price, state of charge.
+		const panels = [
+			{ h: 220, title: 'Cumulative net profit', fmt: money, series: [{ i: 3, c: '#0b6b5c' }, { i: 4, c: '#898781' }], zero: true },
+			{ h: 130, title: 'Price ($/MWh, hourly mean)', fmt: money, series: [{ i: 1, c: '#2a78d6' }], zero: false },
+			{ h: 90, title: 'State of charge', fmt: (v: number) => Math.round(v * 100) + '%', series: [{ i: 2, c: '#eda100' }], zero: false },
+		];
+		const H = m.t + panels.reduce((s, p) => s + p.h + m.gap, 0) + m.b - m.gap;
+		const svg = el('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Cumulative net profit, price and state of charge for ${sel.value}; the table above has the totals` }, host);
+		const x0 = m.l, x1 = W - m.r, tmin = pts[0][0], tmax = pts[n - 1][0];
+		const X = (t: number) => x0 + ((t - tmin) / (tmax - tmin)) * (x1 - x0);
+		const text = (x: number, y: number, s: string, a: Record<string, any>) => { const t = el('text', { x, y, ...a }, svg); t.textContent = s; return t; };
+		let top = m.t;
+		panels.forEach((p) => {
+			const vals = p.series.flatMap((s) => pts.map((r) => r[s.i]));
+			// Price spikes dwarf the rest; clip the axis at the 99th percentile so the typical range stays readable.
+			const sorted = [...vals].sort((a, b) => a - b);
+			const hi = p.title.startsWith('Price') ? sorted[Math.floor(sorted.length * 0.99)] : sorted[sorted.length - 1];
+			const lo = p.zero ? Math.min(0, sorted[0]) : p.title.startsWith('State') ? 0 : Math.min(0, sorted[0]);
+			const top0 = top, y0 = top + p.h, Y = (v: number) => y0 - ((Math.min(v, hi) - lo) / (hi - lo || 1)) * p.h;
+			text(0, top0 - 10, p.title, { 'font-size': 12, 'font-weight': 650, fill: '#14171c' });
+			[lo, (lo + hi) / 2, hi].forEach((v) => {
+				el('line', { x1: x0, x2: x1, y1: Y(v), y2: Y(v), stroke: '#e1e0d9' }, svg);
+				text(x0 - 8, Y(v) + 4, p.fmt(v), { 'text-anchor': 'end', 'font-size': 11, fill: '#898781' });
+			});
+			p.series.forEach((s) => {
+				const d = pts.map((r, k) => `${k ? 'L' : 'M'}${X(r[0]).toFixed(1)} ${Y(r[s.i]).toFixed(1)}`).join('');
+				el('path', { d, fill: 'none', stroke: s.c, 'stroke-width': 1.75, 'stroke-linejoin': 'round' }, svg);
+			});
+			top = y0 + m.gap;
+		});
+		const yb = H - m.b;
+		el('line', { x1: x0, x2: x1, y1: yb, y2: yb, stroke: '#c3c2b7' }, svg);
+		const step = narrow ? 14 : 7;
+		for (let t = Math.ceil(tmin / 24 / step) * 24 * step; t <= tmax; t += 24 * step) text(X(t), yb + 17, dayOf(t), { 'text-anchor': 'middle', 'font-size': 11, fill: '#898781' });
+
+		const g = el('g', { visibility: 'hidden' }, svg), vl = el('line', { y1: m.t, y2: yb, stroke: '#898781' }, g);
+		const hit = el('rect', { x: x0, y: m.t, width: x1 - x0, height: yb - m.t, fill: 'transparent', style: 'cursor:crosshair' }, svg);
+		hit.addEventListener('pointermove', (ev) => {
+			const e = ev as PointerEvent, r = svg.getBoundingClientRect(), px = ((e.clientX - r.left) * W) / r.width;
+			const k = Math.max(0, Math.min(n - 1, Math.round(((px - x0) / (x1 - x0)) * (n - 1)))), row = pts[k];
+			g.setAttribute('visibility', 'visible'); vl.setAttribute('x1', String(X(row[0]))); vl.setAttribute('x2', String(X(row[0])));
+			const rows = [['#0b6b5c', money(row[3]), 'Agent profit'], ['#898781', money(row[4]), 'Perfect foresight'], ['#2a78d6', money(row[1]) + '/MWh', 'Price'], ['#eda100', Math.round(row[2] * 100) + '%', 'State of charge']];
+			tip.replaceChildren();
+			const t = document.createElement('div'); t.className = 'tt'; t.textContent = `${when(row[0])} (NEM time)`; tip.append(t);
+			rows.forEach(([c, v, name]) => {
+				const d = document.createElement('div'); d.className = 'tr';
+				const i = document.createElement('i'); i.style.background = c;
+				const b = document.createElement('b'); b.textContent = v;
+				const s = document.createElement('span'); s.textContent = name;
+				d.append(i, b, s); tip.append(d);
+			});
+			tip.hidden = false;
+			const w = tip.offsetWidth, h = tip.offsetHeight;
+			let x = e.clientX + 14, y = e.clientY - h - 10;
+			if (x + w > innerWidth - 8) x = e.clientX - w - 14;
+			if (y < 8) y = e.clientY + 16;
+			tip.style.left = x + 'px'; tip.style.top = y + 'px';
+		});
+		hit.addEventListener('pointerleave', () => { g.setAttribute('visibility', 'hidden'); tip.hidden = true; });
+	}
+
+	if (host && sel) {
+		draw();
+		sel.addEventListener('change', draw);
+		let rz: number;
+		new ResizeObserver(() => { clearTimeout(rz); rz = window.setTimeout(draw, 80); }).observe(document.body);
+	}
+</script>
