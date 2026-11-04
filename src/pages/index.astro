@@ -1,5 +1,4 @@
 ---
-import PostList from '../components/PostList.astro';
 import ProjectList from '../components/ProjectList.astro';
 import Layout from '../layouts/Page.astro';
 import { GITHUB_URL, LINKEDIN_URL, SITE_DESCRIPTION } from '../consts';
@@ -16,6 +15,4 @@ import { GITHUB_URL, LINKEDIN_URL, SITE_DESCRIPTION } from '../consts';
 	</p>
 	<p class="eyebrow">Projects</p>
 	<ProjectList />
-	<p class="eyebrow">Writing</p>
-	<PostList limit={3} />
 </Layout>
